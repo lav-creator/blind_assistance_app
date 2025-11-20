@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Blind Assistance System</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.9.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+    <style>
+        body {
+            background: #111;
+            color: white;
+            text-align: center;
+            font-family: Arial;
+        }
+
+        #video {
+            width: 90%;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        #labelBox {
+            margin-top: 15px;
+            padding: 10px;
+            font-size: 22px;
+            font-weight: bold;
+            display: none;
+            background: rgba(255,0,0,0.3);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>AI Blind Assistance System</h2>
+
+    <video id="video" autoplay playsinline></video>
+    <div id="labelBox">Object Detected</div>
+
+    <!-- Soft female voice alert -->
+    <audio id="alertSound" src="https://files.catbox.moe/2i1s1j.mp3"></audio>
+
+    <script>
+        const video = document.getElementById("video");
+        const labelBox = document.getElementById("labelBox");
+        const alertSound = document.getElementById("alertSound");
+
+        let model;
+        let lastAlertTime = 0;
+
+        // STEP 1: Start camera
+        async function startCamera() {
+            video.srcObject = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" }
+            });
+        }
+
+        // STEP 2: Load model
+        async function loadModel() {
+            model = await cocoSsd.load();
+            detectObjects();
+        }
+
+        // STEP 3: Object detection loop
+        async function detectObjects() {
+            const predictions = await model.detect(video);
+
+            let detectedSomething = false;
+            let detectedNames = [];
+
+            predictions.forEach(pred => {
+                if (["person", "car", "truck", "bus", "chair", "dining table"].includes(pred.class)) {
+                    detectedSomething = true;
+                    detectedNames.push(pred.class);
+                }
+            });
+
+            if (detectedSomething) {
+                labelBox.style.display = "block";
+                labelBox.innerText = "Detected: " + detectedNames.join(", ");
+
+                let currentTime = Date.now();
+                if (currentTime - lastAlertTime > 2500) { // play once every 2.5 sec
+                    alertSound.play();
+                    lastAlertTime = currentTime;
+                }
+
+            } else {
+                labelBox.style.display = "none";
+            }
+
+            requestAnimationFrame(detectObjects);
+        }
+
+        startCamera();
+        loadModel();
+    </script>
+
+</body>
+</html>
